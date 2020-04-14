@@ -1,13 +1,12 @@
 import numpy as np
 import pandas as pd
-from sklearn.preprocessing import MinMaxScaler, StandardScaler
+from sklearn.preprocessing import MinMaxScaler
 from sklearn.model_selection import train_test_split, GridSearchCV
 from sklearn.base import BaseEstimator, ClassifierMixin
-from sklearn.metrics import f1_score, accuracy_score, confusion_matrix
-from matplotlib import pyplot as plt
+from sklearn.metrics import f1_score
 
 
-class MLP(BaseEstimator,  ClassifierMixin):
+class MLP(BaseEstimator, ClassifierMixin):
 
     def __init__(self, tamanho_layers=None,tamanho_batch=None, taxa_aprendizado=0.01, iteracoes=300,
                  lambd=0.1, beta1=0.9, beta2=0.999, verbose=True):
@@ -169,12 +168,17 @@ class MLP(BaseEstimator,  ClassifierMixin):
         mini_batches = self.get_mini_batches(X, y)
         momentum, rms_prop = self.inicializa_adam(parametros)
         custos = []
-        menor_custo = 1
+        menor_custo = 9999999
         parametros_com_menor_custo = None
 
         for iteracao in range(1, self.iteracoes):
             for x, y in mini_batches:
                 A, cache = self.forward_propagation(x, parametros)
+
+                #if 0 in A or 1 in A:
+                #    print("aqui")
+                A[A == 0] = 0.00000000001
+                A[A == 1] = 0.99999999999
                 custo = self.get_custo(A, y, parametros)
                 if custo < menor_custo:
                     menor_custo = custo
@@ -182,12 +186,12 @@ class MLP(BaseEstimator,  ClassifierMixin):
                 custos.append(custo)
                 gradientes = self.backward_propagation(A, cache, y)
                 parametros, momentum, rms_prop = self.get_parametros_atualizados(parametros, gradientes, x.shape[1],
-                                                                            momentum, rms_prop, iteracao)
-            if iteracao % 100 == 0 and self.verbose:
+                                                                                 momentum, rms_prop, iteracao)
+        if iteracao % 100 == 0 and self.verbose:
                 print("Iteração: {} | Custo: {}".format(iteracao, custo))
 
         self.parametros = parametros_com_menor_custo
-        return custos
+        self.custos = custos
 
     def predict(self, X):
         X = X.to_numpy().T
@@ -204,28 +208,37 @@ class MLP(BaseEstimator,  ClassifierMixin):
 
 if __name__ == "__main__":
     df = pd.read_csv("cardio_train.csv", delimiter=";", index_col=0)
-    mmsc = MinMaxScaler()
-    variaveis_continuas = ["age", "height", "weight", "ap_hi", "ap_lo", "cholesterol"]
-    df[variaveis_continuas] = mmsc.fit(df[variaveis_continuas]).transform(df[variaveis_continuas])
-    df.gender = df.gender.apply(lambda genero: 0 if genero == 2 else genero)
+    # mmsc = MinMaxScaler()
+    # variaveis_continuas = ["age", "height", "weight", "ap_hi", "ap_lo", "cholesterol"]
+    # df[variaveis_continuas] = mmsc.fit(df[variaveis_continuas]).transform(df[variaveis_continuas])
+    # df.gender = df.gender.apply(lambda genero: 0 if genero == 2 else genero)
     x, y = df.iloc[:, :-1], df.iloc[:, -1]
 
     X_train, X_test, y_train, y_test = train_test_split(x, y, test_size=0.2)
+    clf = MLP(beta1=0.83, iteracoes=300, lambd=0.2, tamanho_batch=4096, tamanho_layers=[11, 25, 5, 3, 1],
+              taxa_aprendizado=0.03)
+    clf.fit(X_train, y_train)
+    print(clf)
     #X_train = X_train.T
     #X_test = X_test.T
     #y_train = y_train.reshape((1, X_train.shape[1]))
     #y_test = y_test.reshape((1, X_test.shape[1]))
-    param_grid = dict(tamanho_layers=[[11, 8, 4, 2, 1]],
-                      tamanho_batch=[4096],
-                      taxa_aprendizado=[0.01, 0.03],
-                      iteracoes=[300],
-                      lambd=[0.1],
-                      beta1=np.asarray(range(80, 91, 3)) * 0.01,
-                      verbose=[False]
-                      )
-    clf = GridSearchCV(MLP(), param_grid, n_jobs=3, verbose=10)
-    clf.fit(X_train, y_train)
-    print(clf)
+    # param_grid = dict(tamanho_layers=[[11, 8, 4, 2, 1], [11, 10, 8, 6, 4, 2, 1], [11, 8, 8, 4, 4, 2, 1],
+    #                                   [11, 8, 7, 6, 5, 3, 1]],
+    #                   tamanho_batch=[4096],
+    #                   taxa_aprendizado=[0.01, 0.03, 0.05],
+    #                   iteracoes=[200],
+    #                   lambd=[0.2, 0.4, 0.6],
+    #                   beta1=np.asarray(range(80, 91, 4)) * 0.01,
+    #                   verbose=[False]
+    #                   )
+    #clf = MLP(beta1=0.8, beta2=0.999, iteracoes=200, lambd=200, tamanho_batch=4096,
+    #          tamanho_layers=[11,8,7,6,5,3,1], taxa_aprendizado=0.05)
+    #clf.fit(X_train, y_train)
+    #print(clf)
+    #clf = GridSearchCV(MLP(), param_grid, n_jobs=3, verbose=10)
+    #clf.fit(X_train, y_train)
+    #print(clf)
 
 
     #classificador = MLP(tamanho_layers=[11, 8, 7, 6, 5, 4, 2, 1], tamanho_batch=4096)
