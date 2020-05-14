@@ -1,1 +1,1 @@
-MLP
+# Implementation of a multilayer perceptron just with numpy
