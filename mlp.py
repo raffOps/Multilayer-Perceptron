@@ -99,7 +99,7 @@ class MLP(BaseEstimator, ClassifierMixin):
                     print("Iteração: {} | Custo: {}".format(epoch, cost))
 
         self.weights = weights_with_lower_cost
-        self.costs = costs
+        self.costs = lower_cost
 
     def forward_propagation(self, X, parametros):
         cache = []
