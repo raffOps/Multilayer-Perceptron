@@ -21,29 +21,31 @@ class MLP(BaseEstimator, ClassifierMixin):
         self.verbose = verbose
 
     def sigmoid(self, Z):
-        A = np.divide(1., 1 + np.exp(-Z))
-        return A
+        return np.divide(1., 1 + np.exp(-Z))
 
     def softsign(self, Z):
-        A = np.divide(Z, (1 + np.abs(Z)))
-        return A
+        return np.divide(Z, (1 + np.abs(Z)))
 
     def relu(self, Z):
-        A = np.maximum(0, Z)
-        return A
+        return np.maximum(0, Z)
 
     def leaky_relu(self, Z):
-        A = np.maximum(0.01 * Z, Z)
-        return A
+        return np.maximum(0.01 * Z, Z)
 
     def get_inital_weights(self):
         np.random.seed(1)
-        weights = []
-        for index in range(1, len(self.layers_size)):
-            weights.append([(np.random.randn(self.layers_size[index], self.layers_size[index - 1]) * (
-                                2 / np.sqrt(self.layers_size[index - 1]))),
-                               np.zeros((self.layers_size[index], 1))])
-        return weights
+        return [
+            [
+                (
+                    np.random.randn(
+                        self.layers_size[index], self.layers_size[index - 1]
+                    )
+                    * (2 / np.sqrt(self.layers_size[index - 1]))
+                ),
+                np.zeros((self.layers_size[index], 1)),
+            ]
+            for index in range(1, len(self.layers_size))
+        ]
 
     def get_mini_batches(self, X, Y):
         quantidade_batchs = X.shape[1] // self.batch_size
@@ -96,7 +98,7 @@ class MLP(BaseEstimator, ClassifierMixin):
                 weights, momentum, rms_prop = self.get_update_weights(weights, grads, x.shape[1],
                                                                       momentum, rms_prop, epoch)
             if epoch % 100 == 0 and self.verbose:
-                    print("Iteração: {} | Custo: {}".format(epoch, cost))
+                print(f"Iteração: {epoch} | Custo: {cost}")
 
         self.weights = weights_with_lower_cost
         self.costs = lower_cost
@@ -105,7 +107,7 @@ class MLP(BaseEstimator, ClassifierMixin):
         cache = []
         A = X
         layers_quantity = len(parametros)
-        for index_layer in range(0, layers_quantity - 1):
+        for index_layer in range(layers_quantity - 1):
             W, b = parametros[index_layer]
             Z = np.dot(W, A) + b
             cache.append((A, Z, W, b))
@@ -132,14 +134,11 @@ class MLP(BaseEstimator, ClassifierMixin):
 
     def derivative_sigmoid(self, dA, Z):
         s = 1 / (1 + np.exp(-Z))
-        dZ = dA * s * (1 - s)
-        return dZ
+        return dA * s * (1 - s)
 
     def backward_propagation(self, A, cache, Y):
         m = A.shape[1]
         Y = Y.reshape(A.shape)
-        grads = []
-
         dA = - (np.divide(Y, A) - np.divide(1 - Y, 1 - A))
         A_prev, Z, W, b = cache[-1]
         dZ = self.derivative_sigmoid(dA, Z)
@@ -147,8 +146,7 @@ class MLP(BaseEstimator, ClassifierMixin):
         dA_prev_layer = np.dot(W.T, dZ)
         dW = np.dot(dZ, A_prev.T) / m
         db = np.sum(dZ, axis=1, keepdims=True) / m
-        grads.append([dW, db])
-
+        grads = [[dW, db]]
         for cache_ in cache[::-1][1:]:
             dA = dA_prev_layer
             A_prev, Z, W, b = cache_
